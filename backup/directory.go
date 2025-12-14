@@ -42,6 +42,12 @@ func CopyDirectory(source, destination string, excludePatterns []string) error {
 			return nil
 		}
 
+		// Пропускаем специальные файлы (socket, named pipe, device files)
+		mode := info.Mode()
+		if mode&os.ModeSocket != 0 || mode&os.ModeNamedPipe != 0 || mode&os.ModeDevice != 0 {
+			return nil
+		}
+
 		// Проверяем exclude patterns
 		if shouldExclude(relPath, excludePatterns) {
 			if info.IsDir() {
@@ -88,13 +94,26 @@ func CopyDirectory(source, destination string, excludePatterns []string) error {
 }
 
 func shouldExclude(path string, patterns []string) bool {
+	fileName := filepath.Base(path)
+	
 	for _, pattern := range patterns {
 		pattern = strings.TrimSpace(pattern)
 		if pattern == "" {
 			continue
 		}
 
+		// Проверяем совпадение с полным путем
 		matched, err := filepath.Match(pattern, path)
+		if err != nil {
+			continue
+		}
+
+		if matched {
+			return true
+		}
+
+		// Проверяем совпадение только с именем файла (для паттернов типа *.sock)
+		matched, err = filepath.Match(pattern, fileName)
 		if err != nil {
 			continue
 		}

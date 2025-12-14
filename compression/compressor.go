@@ -74,8 +74,14 @@ func (c *ZipCompressor) Compress(source, destination string) error {
 			return nil
 		}
 
+		// Пропускаем специальные файлы (socket, named pipe, device files)
+		mode := info.Mode()
+		if mode&os.ModeSocket != 0 || mode&os.ModeNamedPipe != 0 || mode&os.ModeDevice != 0 {
+			return nil
+		}
+
 		// Проверяем, является ли это симлинком, указывающим на директорию
-		if info.Mode()&os.ModeSymlink != 0 {
+		if mode&os.ModeSymlink != 0 {
 			// Проверяем, куда указывает симлинк
 			target, err := os.Readlink(path)
 			if err != nil {
@@ -114,9 +120,16 @@ func (c *ZipCompressor) addFileToZip(writer *zip.Writer, filePath, zipPath strin
 		return nil
 	}
 
+	// Пропускаем специальные файлы (socket, named pipe, device files)
+	mode := info.Mode()
+	if mode&os.ModeSocket != 0 || mode&os.ModeNamedPipe != 0 || mode&os.ModeDevice != 0 {
+		return nil
+	}
+
 	file, err := os.Open(filePath)
 	if err != nil {
-		return err
+		// Если не удалось открыть файл (например, socket или другой специальный файл), пропускаем
+		return nil
 	}
 	defer file.Close()
 
