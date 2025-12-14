@@ -35,6 +35,8 @@ type BackupConfig struct {
 	Compression     string           `yaml:"compression"`
 	ExcludePatterns []string         `yaml:"exclude_patterns"`
 	Retention       *RetentionPolicy `yaml:"retention"`
+	PreHooks        []string         `yaml:"pre_hooks"`
+	PostHooks       []string         `yaml:"post_hooks"`
 }
 
 type Config struct {
