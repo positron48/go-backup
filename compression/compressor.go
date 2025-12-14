@@ -66,7 +66,8 @@ func (c *ZipCompressor) Compress(source, destination string) error {
 	// Если source - это директория
 	return filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return err
+			// Пропускаем файлы/директории, к которым нет доступа
+			return nil
 		}
 
 		// Пропускаем директории
@@ -109,10 +110,11 @@ func (c *ZipCompressor) Compress(source, destination string) error {
 }
 
 func (c *ZipCompressor) addFileToZip(writer *zip.Writer, filePath, zipPath string) error {
-	// Проверяем, что это файл, а не директория
-	info, err := os.Stat(filePath)
+	// Используем Lstat, чтобы не следовать симлинкам
+	info, err := os.Lstat(filePath)
 	if err != nil {
-		return err
+		// Файл не существует или недоступен, пропускаем
+		return nil
 	}
 
 	// Дополнительная проверка: если это директория, пропускаем
@@ -126,9 +128,30 @@ func (c *ZipCompressor) addFileToZip(writer *zip.Writer, filePath, zipPath strin
 		return nil
 	}
 
+	// Если это симлинк, проверяем, что цель существует и это файл
+	if mode&os.ModeSymlink != 0 {
+		target, err := os.Readlink(filePath)
+		if err != nil {
+			// Не удалось прочитать симлинк, пропускаем
+			return nil
+		}
+		// Получаем абсолютный путь цели
+		if !filepath.IsAbs(target) {
+			target = filepath.Join(filepath.Dir(filePath), target)
+		}
+		// Проверяем, что цель существует и это файл
+		targetInfo, err := os.Stat(target)
+		if err != nil || targetInfo.IsDir() {
+			// Цель не существует или это директория, пропускаем
+			return nil
+		}
+		// Используем информацию о цели для создания заголовка
+		info = targetInfo
+	}
+
 	file, err := os.Open(filePath)
 	if err != nil {
-		// Если не удалось открыть файл (например, socket или другой специальный файл), пропускаем
+		// Если не удалось открыть файл, пропускаем
 		return nil
 	}
 	defer file.Close()
