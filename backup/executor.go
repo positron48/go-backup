@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"backup-tool/compression"
-	"backup-tool/config"
-	"backup-tool/hooks"
-	"backup-tool/retention"
-	"backup-tool/utils"
+	"goback/compression"
+	"goback/config"
+	"goback/hooks"
+	"goback/retention"
+	"goback/utils"
 )
 
 type Executor struct {

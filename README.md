@@ -1,100 +1,113 @@
-# Backup Tool
+# goback
 
-Система автоматизации бэкапов на Go.
+Automated backup system written in Go.
 
-## Сборка
+## Building
 
-### Локальная сборка
+### Local build
 
 ```bash
-go build -o backup-tool .
+go build -o goback .
 ```
 
-### Автоматическая сборка через GitHub Actions
+### Automatic build via GitHub Actions
 
-При создании тега (например, `v1.0.0`) или через workflow_dispatch автоматически собирается бинарник для Ubuntu 20.04 и прикрепляется к релизу.
+When a tag is created (e.g., `v1.0.0`) or via workflow_dispatch, a binary for Ubuntu 20.04 is automatically built and attached to the release.
 
 ```bash
-# Создание тега и пуш
+# Create tag and push
 git tag v1.0.0
 git push origin v1.0.0
 ```
 
-## Использование
+## Usage
+
+### Basic usage
 
 ```bash
-./backup-tool [config.yaml]
+./goback [config.yaml]
 ```
 
-Если путь к конфигу не указан, используется `config.yaml` в текущей директории.
+If the config path is not specified, `config.yaml` in the current directory is used.
 
+### Command-line flags
 
-## Конфигурация
+- `-config`, `-c` - Path to configuration file (default: `config.yaml`)
+- `-backup`, `-b` - Name of backup to run (can be specified multiple times)
+- `--skip-global-pre-hooks`, `--skip-pre-hooks` - Skip global pre-hooks execution
+- `--skip-global-post-hooks`, `--skip-post-hooks` - Skip global post-hooks execution
 
-Утилита использует YAML-конфигурационный файл для настройки бэкапов. Пример конфигурации находится в файле `config-example.yaml`.
+### Examples
 
-### Структура конфигурации
+```bash
+# Run all backups from config.yaml
+./goback
 
-#### Глобальные настройки (`global`)
+# Run specific backup
+./goback -b backup-name
 
-- `backup_dir` - папка для хранения всех бэкапов (обязательно)
-- `retention` - глобальная политика хранения бэкапов:
-  - `daily` - количество дневных бэкапов
-  - `weekly` - количество недельных бэкапов
-  - `monthly` - количество месячных бэкапов
-  - `yearly` - количество годовых бэкапов
-- `filename_mask` - маска для именования файлов (обязательно)
-  - Доступные переменные: `%name%`, `%Y%`, `%m%`, `%d%`, `%H%`, `%M%`, `%S%`
-  - Пример: `%name%-%Y%m%d%H%M%S` → `backup-20241214153045`
-- `default_compression` - сжатие по умолчанию: `gzip`, `zip`, `tar`, `tar.gz`, `none`
-- `pre_hooks` - список команд для выполнения перед всеми бэкапами (опционально)
-- `post_hooks` - список команд для выполнения после всех бэкапов (опционально)
-- `include_dir` - папка с подключаемыми конфигами бэкапов (опционально)
-  - Утилита автоматически читает все `.yaml` и `.yml` файлы из этой папки
-  - Каждый файл должен содержать один бэкап (без обертки в массив)
+# Run multiple specific backups
+./goback -b backup1 -b backup2 -b backup3
 
-#### Настройки бэкапа (`backups`)
+# Use custom config file
+./goback -config /path/to/config.yaml
 
-Каждый бэкап может быть настроен двумя способами:
+# Run specific backup with custom config
+./goback -c custom.yaml -b backup-name
 
-1. **Бэкап директории** - использует `source_dir`:
-   - `name` - имя бэкапа (обязательно)
-   - `subdirectory` - подпапка в `backup_dir` (обязательно)
-   - `source_dir` - путь к директории для бэкапа
-   - `exclude_patterns` - список glob-паттернов для исключения файлов/папок (опционально)
-   - `compression` - тип сжатия (переопределяет `default_compression`, опционально)
-   - `retention` - политика хранения (переопределяет глобальную, опционально)
+# Skip global hooks
+./goback --skip-global-pre-hooks --skip-global-post-hooks
 
-2. **Бэкап через команду** - использует `command` и `output_file`:
-   - `name` - имя бэкапа (обязательно)
-   - `subdirectory` - подпапка в `backup_dir` (обязательно)
-   - `command` - команда для выполнения (например, `mysqldump`, `pg_dump`)
-   - `output_file` - имя выходного файла
-   - `compression` - тип сжатия (переопределяет `default_compression`, опционально)
-   - `retention` - политика хранения (переопределяет глобальную, опционально)
+# Positional arguments (for backward compatibility)
+./goback config.yaml backup-name
+./goback backup-name backup-name2
+```
 
-### Примеры
+## Configuration
 
-См. файл `config-example.yaml` для подробных примеров использования всех возможностей утилиты.
+The tool uses a YAML configuration file to set up backups. See `config-example.yaml` for a detailed example with all available options and their descriptions.
 
+### Minimal configuration example
 
-## Функции
+```yaml
+global:
+  backup_dir: "/var/www/backups"
+  filename_mask: "%name%-%Y%m%d%H%M%S"
+  default_compression: "gzip"
+  retention:
+    daily: 2
+    weekly: 2
+    monthly: 2
+    yearly: 2
 
-- Поддержка бэкапов директорий с исключениями
-- Поддержка бэкапов через выполнение команд (например, дампы БД)
-- Различные типы сжатия: gzip, zip, tar, tar.gz, none
-- Retention policy по якорным точкам (daily, weekly, monthly, yearly)
-- Pre/post hooks для выполнения команд до и после бэкапа
-- Автоматическое чтение конфигов из include_dir
+backups:
+  - name: "my-backup"
+    subdirectory: "project"
+    source_dir: "/var/www/project"
+```
 
-## Структура проекта
+For complete configuration documentation with all available options, see `config-example.yaml`.
+
+## Features
+
+- Directory backups with exclusion patterns
+- Command-based backups (e.g., database dumps)
+- Multiple compression types: gzip, zip, tar, tar.gz, none
+- Retention policy based on anchor points (daily, weekly, monthly, yearly)
+- Pre/post hooks for executing commands before and after backups
+- Automatic loading of backup configs from include_dir
+- Selective backup execution by name
+- Global hooks control
+
+## Project structure
 
 ```
-backup-tool/
-├── main.go                 # Точка входа
-├── config/                 # Парсинг конфигурации
-├── backup/                 # Логика выполнения бэкапов
-├── compression/            # Поддержка сжатия
+goback/
+├── main.go                 # Entry point
+├── config/                 # Configuration parsing
+├── backup/                 # Backup execution logic
+├── compression/            # Compression support
 ├── retention/              # Retention policy
-├── hooks/                  # Выполнение хуков
-└── utils/                  # Утилиты
+├── hooks/                   # Hook execution
+└── utils/                   # Utilities
+```

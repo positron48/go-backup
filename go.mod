@@ -1,4 +1,4 @@
-module backup-tool
+module goback
 
 go 1.21
 
