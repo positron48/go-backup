@@ -25,7 +25,7 @@ func NewExecutor(globalConfig *config.GlobalConfig) *Executor {
 }
 
 func (e *Executor) ExecuteBackup(backupConfig *config.BackupConfig) error {
-	fmt.Printf("Starting backup: %s\n", backupConfig.Name)
+	utils.PrintHeader("Starting backup: %s", backupConfig.Name)
 
 	// Выполняем pre-hooks
 	if len(e.globalConfig.PreHooks) > 0 {
@@ -99,7 +99,7 @@ func (e *Executor) ExecuteBackup(backupConfig *config.BackupConfig) error {
 		return fmt.Errorf("failed to compress: %w", err)
 	}
 
-	fmt.Printf("Backup created: %s\n", filename)
+	utils.PrintSuccess("Backup created: %s", filename)
 
 	// Применяем retention policy
 	retentionPolicy := e.globalConfig.Retention
@@ -125,7 +125,7 @@ func (e *Executor) ExecuteBackup(backupConfig *config.BackupConfig) error {
 		}
 	}
 
-	fmt.Printf("Backup completed: %s\n", backupConfig.Name)
+	utils.PrintSuccess("Backup completed: %s", backupConfig.Name)
 	return nil
 }
 

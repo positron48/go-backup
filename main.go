@@ -6,6 +6,7 @@ import (
 
 	"backup-tool/backup"
 	"backup-tool/config"
+	"backup-tool/utils"
 )
 
 func main() {
@@ -15,14 +16,14 @@ func main() {
 		configPath = os.Args[1]
 	}
 
-	fmt.Printf("Loading configuration from %s...\n", configPath)
+	utils.PrintHeader("Loading configuration from %s...", configPath)
 	cfg, err := config.LoadConfig(configPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
+		utils.PrintError("Error loading config: %v", err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("Found %d backup(s) to process\n", len(cfg.Backups))
+	utils.PrintHeader("Found %d backup(s) to process", len(cfg.Backups))
 
 	executor := backup.NewExecutor(&cfg.Global)
 
@@ -30,10 +31,10 @@ func main() {
 	errorCount := 0
 
 	for i, backupCfg := range cfg.Backups {
-		fmt.Printf("\n[%d/%d] Processing backup: %s\n", i+1, len(cfg.Backups), backupCfg.Name)
+		utils.PrintHeaderf("\n[%d/%d] Processing backup: %s\n", i+1, len(cfg.Backups), backupCfg.Name)
 
 		if err := executor.ExecuteBackup(&backupCfg); err != nil {
-			fmt.Fprintf(os.Stderr, "Error executing backup %s: %v\n", backupCfg.Name, err)
+			utils.PrintError("Error executing backup %s: %v", backupCfg.Name, err)
 			errorCount++
 			continue
 		}
@@ -41,9 +42,17 @@ func main() {
 		successCount++
 	}
 
-	fmt.Printf("\n=== Summary ===\n")
-	fmt.Printf("Successful: %d\n", successCount)
-	fmt.Printf("Failed: %d\n", errorCount)
+	utils.PrintHeader("\n=== Summary ===")
+	if successCount > 0 {
+		utils.PrintSuccess("Successful: %d", successCount)
+	} else {
+		fmt.Printf("Successful: %d\n", successCount)
+	}
+	if errorCount > 0 {
+		utils.PrintError("Failed: %d", errorCount)
+	} else {
+		fmt.Printf("Failed: %d\n", errorCount)
+	}
 
 	if errorCount > 0 {
 		os.Exit(1)
