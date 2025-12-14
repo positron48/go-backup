@@ -93,8 +93,20 @@ func (c *ZipCompressor) Compress(source, destination string) error {
 			if !filepath.IsAbs(target) {
 				target = filepath.Join(filepath.Dir(path), target)
 			}
+			// Проверяем, находится ли цель внутри исходной директории
+			relTarget, err := filepath.Rel(source, target)
+			if err != nil || strings.HasPrefix(relTarget, "..") {
+				// Цель находится вне исходной директории, пропускаем
+				return nil
+			}
 			// Проверяем, является ли цель директорией
-			if targetInfo, err := os.Stat(target); err == nil && targetInfo.IsDir() {
+			// Если цель не существует, просто пропускаем (не добавляем битый симлинк)
+			targetInfo, err := os.Stat(target)
+			if err != nil {
+				// Цель не существует, пропускаем
+				return nil
+			}
+			if targetInfo.IsDir() {
 				// Симлинк указывает на директорию, пропускаем
 				return nil
 			}
@@ -140,13 +152,18 @@ func (c *ZipCompressor) addFileToZip(writer *zip.Writer, filePath, zipPath strin
 			target = filepath.Join(filepath.Dir(filePath), target)
 		}
 		// Проверяем, что цель существует и это файл
+		// Если цель не существует, просто добавляем симлинк как есть (без разыменования)
 		targetInfo, err := os.Stat(target)
-		if err != nil || targetInfo.IsDir() {
-			// Цель не существует или это директория, пропускаем
+		if err != nil {
+			// Цель не существует, добавляем симлинк как есть
+			// Не меняем info, используем информацию о самом симлинке
+		} else if targetInfo.IsDir() {
+			// Цель - директория, пропускаем
 			return nil
+		} else {
+			// Используем информацию о цели для создания заголовка
+			info = targetInfo
 		}
-		// Используем информацию о цели для создания заголовка
-		info = targetInfo
 	}
 
 	file, err := os.Open(filePath)
