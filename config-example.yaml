@@ -1,0 +1,157 @@
+---
+# Пример конфигурационного файла для Backup Tool
+# Скопируйте этот файл в config.yaml и настройте под свои нужды
+
+# Глобальные настройки бэкапов
+global:
+  # Папка для хранения всех бэкапов
+  backup_dir: "/var/www/backups"
+  
+  # Глобальная политика хранения бэкапов
+  # Утилита автоматически определяет якорные точки (daily, weekly, monthly, yearly)
+  # и сохраняет указанное количество бэкапов для каждого типа
+  retention:
+    daily: 2      # Количество дневных бэкапов
+    weekly: 2     # Количество недельных бэкапов
+    monthly: 2    # Количество месячных бэкапов
+    yearly: 2     # Количество годовых бэкапов
+  
+  # Маска для именования файлов: %name%-YmdHis
+  # Пример: budget-20241214153045
+  # Доступные переменные:
+  #   %name% - имя бэкапа
+  #   %Y% - год (4 цифры)
+  #   %m% - месяц (2 цифры)
+  #   %d% - день (2 цифры)
+  #   %H% - час (2 цифры)
+  #   %M% - минута (2 цифры)
+  #   %S% - секунда (2 цифры)
+  filename_mask: "%name%-%Y%m%d%H%M%S"
+  
+  # Сжатие по умолчанию (gzip, zip, tar, tar.gz, none)
+  # Можно переопределить для каждого бэкапа отдельно
+  default_compression: "gzip"
+  
+  # Команды на предвыполнение (прехук) - опционально
+  # Выполняются перед началом всех бэкапов
+  pre_hooks:
+    # - "systemctl stop some-service"
+    # - "echo 'Starting backup process'"
+  
+  # Команды на поствыполнение (постхук) - опционально
+  # Выполняются после завершения всех бэкапов
+  post_hooks:
+    # - "systemctl start some-service"
+    # - "echo 'Backup completed'"
+  
+  # Папка с подключаемыми конфигами бэкапов
+  # Утилита будет читать все .yaml и .yml файлы из этой папки
+  # Каждый файл должен содержать один бэкап (без обертки в массив)
+  # 
+  # Пример структуры файла бэкапа в include_dir:
+  # name: "backup-name"
+  # subdirectory: "project-name"
+  # source_dir: "/path/to/source"
+  # exclude_patterns:
+  #   - "*.log"
+  # compression: "gzip"
+  #
+  # Если указан include_dir, утилита автоматически загрузит все бэкапы из этой папки
+  # и объединит их с бэкапами, указанными в секции backups ниже
+  include_dir: "/var/www/my/backup/backups"
+
+# Список бэкапов (опционально, можно использовать include_dir вместо этого)
+# Если указан include_dir, утилита будет автоматически читать все .yaml и .yml файлы из этой папки
+# Каждый файл должен содержать один бэкап (без обертки в массив)
+# 
+# Альтернативно можно указать бэкапы прямо здесь:
+backups:
+  # Пример 1: Бэкап директории с исключениями
+  - name: "example-website"
+    subdirectory: "example"
+    source_dir: "/var/www/example"
+    # Паттерны для исключения файлов/папок (glob patterns)
+    exclude_patterns:
+      - "var/cache/*"
+      - "vendor/*"
+      - "*.log"
+      - "node_modules/*"
+    # Тип сжатия (переопределяет default_compression)
+    compression: "zip"
+    # Политика хранения (переопределяет глобальную)
+    retention:
+      daily: 3
+      weekly: 2
+      monthly: 2
+      yearly: 1
+
+  # Пример 2: Бэкап директории с минимальными настройками
+  # Использует глобальные настройки по умолчанию
+  - name: "simple-backup"
+    subdirectory: "simple"
+    source_dir: "/var/www/simple"
+
+  # Пример 3: Бэкап через выполнение команды (например, дамп БД)
+  - name: "database-dump"
+    subdirectory: "databases"
+    # Команда для выполнения (например, mysqldump, pg_dump)
+    command: "mysqldump -u user -ppassword database_name"
+    # Имя выходного файла (будет использовано в filename_mask)
+    output_file: "database.sql"
+    compression: "gzip"
+    retention:
+      daily: 7
+      weekly: 4
+      monthly: 6
+      yearly: 2
+
+  # Пример 4: Бэкап PostgreSQL базы данных
+  - name: "postgres-backup"
+    subdirectory: "databases"
+    command: "pg_dump -U postgres my_database"
+    output_file: "postgres.sql"
+    compression: "tar.gz"
+    retention:
+      daily: 5
+      weekly: 3
+      monthly: 3
+      yearly: 1
+
+  # Пример 5: Бэкап с использованием tar сжатия
+  - name: "project-backup"
+    subdirectory: "projects"
+    source_dir: "/var/www/project"
+    exclude_patterns:
+      - "*.tmp"
+      - ".git/*"
+    compression: "tar"
+    retention:
+      daily: 2
+      weekly: 2
+      monthly: 2
+      yearly: 2
+
+  # Пример 6: Бэкап без сжатия
+  - name: "uncompressed-backup"
+    subdirectory: "raw"
+    source_dir: "/var/www/raw"
+    compression: "none"
+
+# Пример файла бэкапа в include_dir (/var/www/my/backup/backups/positroid-blog.yaml):
+# ---
+# # Бэкап директории блога positroid.tech
+# name: "positroid-blog"
+# subdirectory: "positroid.tech"
+# source_dir: "/var/www/positroid.tech"
+# exclude_patterns:
+#   - "var/cache/*"
+#   - "vendor/*"
+# # Сжатие: zip (как в оригинальном скрипте)
+# compression: "zip"
+# # Политика хранения бэкапов (переопределяет глобальную)
+# retention:
+#   daily: 2
+#   weekly: 2
+#   monthly: 2
+#   yearly: 2
+# ---
